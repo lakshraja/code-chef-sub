@@ -1,0 +1,312 @@
+import tkinter as tk
+
+import uuid
+import sqlite3
+
+
+class App:
+    def __init__(self):
+       
+        self.data=None
+        
+        self.datafilepath="data.db"
+        
+
+        
+        
+        #id INTEGER PRIMARY KEY AUTOINCREMENT,
+        
+        con = sqlite3.connect(self.datafilepath)
+        cur=con.cursor()
+        cur.execute('''
+                    CREATE TABLE If NOT EXISTS notes (
+                    id TEXT PRIMARY KEY,
+                    title TEXT,
+                    body TEXT
+                    )
+                    ''')
+    
+        self.load_all_data()
+
+        #load the data from the db if not connected to internet
+        #if internet is on load from the server
+
+        con.commit()
+        con.close()
+
+        self.ui=UI(self)
+        
+        #save somewhere this
+        #is_synced=True
+
+    def run(self):
+        self.ui.mainloop()
+
+
+    def load_all_data(self):
+        
+        con = sqlite3.connect(self.datafilepath)
+        cur=con.cursor()
+        cur.execute("SELECT * from notes")
+    
+        self.data=cur.fetchall()
+        
+        con.commit()
+        con.close()
+
+    
+    def save_note(self, data):
+        note_id=data[0]
+        
+        #update the local data instance
+        for i in range(len(self.data)):
+            if (self.data[i])[0]==note_id:
+                self.data[i]=data
+
+
+
+        
+        con = sqlite3.connect(self.datafilepath)
+        cur=con.cursor()
+        
+        cur.execute('''SELECT 1 FROM notes WHERE id = ?''', (note_id,))
+        if cur.fetchone():
+
+
+            cur.execute('''
+                        UPDATE notes
+                        SET title = ?, body = ?
+                        WHERE id = ?
+                        ''', (data[1], data[2], note_id,))
+        else:
+            cur.execute('''
+                        INSERT INTO notes
+                        (id, title, body) VALUES (?, ?, ?)
+                           ''', data)
+
+        con.commit()
+        con.close()
+
+    
+    def delete_note(self, note_id):
+
+        #update the local data instance
+        for i in range(len(self.data)):
+            if (self.data[i])[0]==note_id:
+                del self.data[i]
+                break
+
+    
+
+        con = sqlite3.connect(self.datafilepath)
+        cur=con.cursor()
+        
+        cur.execute('''DELETE FROM notes WHERE id = ?''', (note_id,))
+
+        con.commit()
+        con.close()
+
+    #dont know if we should keep data [()] or [[]]
+    def create_note(self):
+        note_id=str(uuid.uuid4())
+        new_note_data=(note_id, "", "")
+        self.data.append(new_note_data)
+        return new_note_data
+
+    def app_note_closed(self, data):
+        #do saving here
+        pass
+
+
+
+class UI(tk.Tk):
+    def __init__(self, controller):
+        super().__init__()
+
+        self.title("Notes App Demo")
+        self.geometry("800x600")
+        self.resizable(False, False)
+
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.controller=controller
+
+        self.load_notelist()
+
+    def load_notelist(self):
+        self.current_frame=NoteList(self, self.load_note, self.create_new_note, self.delete_note, self.controller.data)
+        self.current_frame.pack(fill="both")
+    
+
+    #better to do this
+    #def load_note(self, note_id):
+    #but this is more convinient
+    def load_note(self, data):
+        self.unload_frame()
+        self.current_frame=Note(self, self.note_closed, data)
+        self.current_frame.pack()
+        
+
+
+    #better name
+    #note_closed or on_note_closd or close_note
+    def note_closed(self, data):
+        self.controller.save_note(data)
+        
+        self.unload_frame()
+        self.load_notelist()
+
+
+    def create_new_note(self):
+        self.unload_frame()
+        new_note_data=self.controller.create_note()
+        self.load_note(new_note_data)
+
+        #delete current frame
+        #load new note frame
+
+    def unload_frame(self):
+        if not self.current_frame: return
+        self.current_frame.pack_forget()
+        self.current_frame.destroy()
+        #del self.current_frame
+        self.current_frame=None
+
+    def on_closing(self):
+        #do saving here
+        self.destroy()
+
+    def refresh_note_list(self):
+        self.unload_frame()
+        self.load_notelist()
+
+    def delete_note(self, note_id):
+        self.controller.delete_note(note_id)
+        
+        self.refresh_note_list()
+
+
+#WORK HERE FIRST
+class NoteList(tk.Frame):
+    def __init__(self, parent, load_note_callback, add_button_callback, delete_button_callback, data):
+        super().__init__(parent)
+        
+        
+        self.add_button_callback=add_button_callback
+        self.load_note_callback=load_note_callback
+        self.delete_button_callback=delete_button_callback
+
+        self.add_note_button=tk.Button(self, text="+", pady=0, padx=0, bd=0, bg="#ffffff", command=self.add_note_button_pressed)
+        self.add_note_button.pack(anchor="nw")
+
+
+        self.notes=[]
+
+        #we need a more beautiful but complex logic to handle this stuff
+        for i in range(len(data)):
+            self.notes.append(NoteListElement(self, data[i], self.load_note_callback, self.delete_button_callback))
+            self.notes[i].pack(side="left", padx=2, pady=2)
+
+    
+    def add_note_button_pressed(self):
+        self.add_button_callback()
+
+
+class NoteListElement(tk.Frame):
+    def __init__(self, parent, data, callback, delete_button_callback):
+        super().__init__(parent)
+
+        self.id=data[0]
+        self.title=data[1]
+
+        self.body=data[2]
+        #or just
+        self.data=data
+
+        self.callback=callback
+        self.delete_button_callback=delete_button_callback
+        
+        self.width=250
+        self.height=200
+ 
+         #can add animations here as well
+
+        self.config(width=self.width, height=self.height)
+        self.pack_propagate(False)
+
+        self.bgframe=tk.Frame(self, bg="#ffffff")
+        self.bgframe.pack(fill="both", expand=True)
+
+        self.note_title=tk.Label(self.bgframe, text=self.title, bg="#ffffff", font=("Arial",14, "bold"))
+        self.note_title.pack(side="left", anchor="nw", expand=True)
+
+        self.delete_button=tk.Button(self.bgframe, bd=0, text="x", bg="#ffffff", command=self.on_click_delete)
+        self.delete_button.pack(side="left", anchor="ne")
+
+        self.bind("<Button-1>", self.on_click)
+ 
+        self.bgframe.bind("<Button-1>", self.on_click)
+        self.note_title.bind("<Button-1>", self.on_click)
+
+
+    def on_click(self, _):
+        #this
+        #self.callback(self.id)
+        #or this
+        self.callback(self.data)
+
+    def on_click_delete(self):
+        self.delete_button_callback(self.id)
+
+
+
+class Note(tk.Frame):
+    def __init__(self, parent, callback, data):
+        super().__init__(parent)
+
+        self.top_frame=tk.Frame(self)
+        self.top_frame.pack(fill="x", padx=0, pady=0)
+        
+        self.return_button=tk.Button(self.top_frame, text="<", pady=0, padx=0, bd=0, bg="#ffffff",  command=self.return_button_pressed)
+        self.return_button.pack(side="left")
+
+        self.callback=callback
+
+
+        self.title_text_box=tk.Text(self.top_frame, height=1, font=("Arial", 15, "bold"), pady=0, padx=0)
+        self.title_text_box.pack(fill="x")
+
+        #complicated line
+        #if i press enter dont put a newline char and move to the body
+        #would look better if i just made a new function
+        self.title_text_box.bind("<Return>", lambda _: (self.body_text_box.focus(), "break")[1])
+
+        self.body_text_box=tk.Text(self)
+        self.body_text_box.pack(expand=True, fill="both")
+
+        self.id=data[0]
+        if data[1]: self.title_text_box.insert("0.0", data[1])
+        if data[2]: self.body_text_box.insert("0.0", data[2])
+    
+
+
+    def return_button_pressed(self):
+        title=self.title_text_box.get("1.0", "end-1c")
+
+        body=self.body_text_box.get("1.0", "end-1c")
+
+        if title or body:           
+            pass
+
+        self.callback((self.id, title, body))
+
+
+
+
+
+def main():
+    app=App()
+    app.run()
+
+if __name__=='__main__':
+    main()
