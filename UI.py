@@ -64,7 +64,8 @@ class UI(tk.Tk):
         self.current_frame=None
 
     def on_closing(self):
-        #do saving here
+        if isinstance(self.current_frame, Note):
+            self.current_frame.return_button_pressed()
         self.destroy()
 
     def refresh_note_list(self):
