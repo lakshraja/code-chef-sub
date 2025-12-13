@@ -262,7 +262,16 @@ class NoteListElement(tk.Frame):
         self.id=data[0]
         self.title=data[1]
 
-        self.body=data[2]
+        if len(self.title)>30:
+            self.title[:30]
+
+        self.body=(data[2])
+        
+        wrapped_body=self.body.split("\n")
+        if len(wrapped_body)>12:
+            self.body='\n'.join(wrapped_body[:12])
+
+
         #or just
         self.data=data
 
@@ -279,22 +288,30 @@ class NoteListElement(tk.Frame):
         self.bgframe=tk.Frame(self, bg="#ffffff")
         self.bgframe.pack(fill="both", expand=True)
 
+        self.frame_top=tk.Frame(self.bgframe, bg="#ffffff")
+        self.frame_top.pack(side="top", fill="x", anchor ="nw",  expand=True)
     
-        self.note_title=tk.Label(self.bgframe, text=self.title, bg="#ffffff", font=("Arial", 14, "bold"))
+        self.note_title=tk.Label(self.frame_top, text=self.title, bg="#ffffff", font=("Arial", 14, "bold"), wraplength=NOTELIST_ELEMENT_WIDTH)
         self.note_title.pack(side="left", anchor="nw", expand=True)
 
-        #self.note_body=tk.Label(self.bgframe, text=self.body, bg="#ffffff", font=("Arial", 10))
-        #self.note_body.pack(side="left", anchor="nw", expand=True)
-
-
-        self.delete_button=tk.Button(self.bgframe, bd=0, text="x", bg="#ffffff", command=self.on_click_delete)
+        self.delete_button=tk.Button(self.frame_top, bd=0, text="x", bg="#ffffff", command=self.on_click_delete)
         self.delete_button.pack(side="left", anchor="ne")
+
+        
+        self.body_frame = tk.Frame(self.bgframe, bg="#ffffff")
+        self.body_frame.pack(side="top", fill="both", expand=True)
+        self.note_body=tk.Label(self.body_frame, text=self.body, padx=10, bg="#ffffff", font=("Arial", 12), justify="left", wraplength=NOTELIST_ELEMENT_WIDTH)
+        self.note_body.pack(side="left", anchor="nw")
+
 
         self.bind("<Button-1>", self.on_click)
  
         self.bgframe.bind("<Button-1>", self.on_click)
+        self.frame_top.bind("<Button-1>", self.on_click)
         self.note_title.bind("<Button-1>", self.on_click)
 
+        self.body_frame.bind("<Button-1>", self.on_click)
+        self.note_body.bind("<Button-1>", self.on_click)
 
     def on_click(self, _):
         #this
