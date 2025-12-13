@@ -1,7 +1,16 @@
 import tkinter as tk
 
+import math
 import uuid
 import sqlite3
+
+#constants
+WINDOW_WIDTH=800
+WINDOW_HEIGHT=600
+
+
+NOTELIST_ELEMENT_WIDTH=250
+NOTELIST_ELEMENT_HEIGHT=215
 
 
 class App:
@@ -124,7 +133,7 @@ class UI(tk.Tk):
         super().__init__()
 
         self.title("Notes App Demo")
-        self.geometry("800x600")
+        self.geometry(str(WINDOW_WIDTH)+'x'+str(WINDOW_HEIGHT))
         self.resizable(False, False)
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -200,14 +209,48 @@ class NoteList(tk.Frame):
         self.add_note_button.pack(anchor="nw")
 
 
+
+        row_size=WINDOW_WIDTH//NOTELIST_ELEMENT_WIDTH
+        total_x_padding=WINDOW_WIDTH-(NOTELIST_ELEMENT_WIDTH*row_size)
+        padx=total_x_padding//(row_size+1)
+
+        column_size=WINDOW_HEIGHT//NOTELIST_ELEMENT_HEIGHT
+        total_y_padding=WINDOW_HEIGHT-(NOTELIST_ELEMENT_HEIGHT*column_size)
+        pady=total_y_padding//(column_size+1)
+
+        self.row_size=row_size
+        self.column_size=column_size
+
+        #self.scrollbar=tk.Scrollbar(self, data)
+
         self.notes=[]
 
-        #we need a more beautiful but complex logic to handle this stuff
-        for i in range(len(data)):
-            self.notes.append(NoteListElement(self, data[i], self.load_note_callback, self.delete_button_callback))
-            self.notes[i].pack(side="left", padx=2, pady=2)
 
-    
+        #we need a more beautiful but complex logic to handle this stuff
+        #new idea const y padding
+        pady=7
+
+        total_columns=math.ceil(len(data)/row_size)
+        self.row_frames=[]
+        for i in range(total_columns):
+            row_frame=tk.Frame(self)
+            
+            for j in range(row_size):
+                index=(i*row_size)+j
+                if index>=len(data):
+                    break
+                self.notes.append(NoteListElement(row_frame, data[index], self.load_note_callback, self.delete_button_callback))
+                self.notes[index].pack(side="left", padx=padx//2, pady=pady//2)
+            
+            row_frame.pack(fill="x", side="top", padx=padx//2, pady=pady//2)
+            self.row_frames.append(row_frame)
+
+        '''
+            for i in range(len(data)):
+            self.notes.append(NoteListElement(self, data[i], self.load_note_callback, self.delete_button_callback))
+            self.notes[i].pack(side="left", padx=padx, pady=pady)
+        '''
+
     def add_note_button_pressed(self):
         self.add_button_callback()
 
@@ -226,19 +269,23 @@ class NoteListElement(tk.Frame):
         self.callback=callback
         self.delete_button_callback=delete_button_callback
         
-        self.width=250
-        self.height=200
  
-         #can add animations here as well
+        #can add animations here as well
 
-        self.config(width=self.width, height=self.height)
+
+        self.config(width=NOTELIST_ELEMENT_WIDTH, height=NOTELIST_ELEMENT_WIDTH)
         self.pack_propagate(False)
 
         self.bgframe=tk.Frame(self, bg="#ffffff")
         self.bgframe.pack(fill="both", expand=True)
 
-        self.note_title=tk.Label(self.bgframe, text=self.title, bg="#ffffff", font=("Arial",14, "bold"))
+    
+        self.note_title=tk.Label(self.bgframe, text=self.title, bg="#ffffff", font=("Arial", 14, "bold"))
         self.note_title.pack(side="left", anchor="nw", expand=True)
+
+        #self.note_body=tk.Label(self.bgframe, text=self.body, bg="#ffffff", font=("Arial", 10))
+        #self.note_body.pack(side="left", anchor="nw", expand=True)
+
 
         self.delete_button=tk.Button(self.bgframe, bd=0, text="x", bg="#ffffff", command=self.on_click_delete)
         self.delete_button.pack(side="left", anchor="ne")
