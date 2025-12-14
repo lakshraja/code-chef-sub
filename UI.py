@@ -26,7 +26,7 @@ class UI(tk.Tk):
 
     def load_notelist(self):
         self.current_frame=NoteList(self, self.load_note, self.create_new_note, self.delete_note, self.controller.data)
-        self.current_frame.pack(fill="both")
+        self.current_frame.pack(fill="both", expand=True)
     
 
     #better to do this
@@ -35,7 +35,7 @@ class UI(tk.Tk):
     def load_note(self, data):
         self.unload_frame()
         self.current_frame=Note(self, self.note_closed, data)
-        self.current_frame.pack()
+        self.current_frame.pack(fill="both", expand=True)
         
 
 
@@ -78,7 +78,7 @@ class UI(tk.Tk):
         self.refresh_note_list()
 
 
-#WORK HERE FIRST
+
 class NoteList(tk.Frame):
     def __init__(self, parent, load_note_callback, add_button_callback, delete_button_callback, data):
         super().__init__(parent)
@@ -92,6 +92,28 @@ class NoteList(tk.Frame):
         self.add_note_button.pack(anchor="nw")
 
 
+        self.canvas=tk.Canvas(self)
+        self.scrollbar= tk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+
+        self.scrollable_frame=tk.Frame(self.canvas)
+        self.scrollable_frame.pack()
+
+        def _on_frame_configure(event):
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        self.scrollable_frame.bind("<Configure>", _on_frame_configure)
+
+
+
+        self.canvas_window = self.canvas.create_window(
+            (0, 0),
+        window=self.scrollable_frame,
+        anchor="nw"
+        )
 
         row_size=WINDOW_WIDTH//NOTELIST_ELEMENT_WIDTH
         total_x_padding=WINDOW_WIDTH-(NOTELIST_ELEMENT_WIDTH*row_size)
@@ -104,7 +126,6 @@ class NoteList(tk.Frame):
         self.row_size=row_size
         self.column_size=column_size
 
-        #self.scrollbar=tk.Scrollbar(self, data)
 
         self.notes=[]
 
@@ -116,7 +137,7 @@ class NoteList(tk.Frame):
         total_columns=math.ceil(len(data)/row_size)
         self.row_frames=[]
         for i in range(total_columns):
-            row_frame=tk.Frame(self)
+            row_frame=tk.Frame(self.scrollable_frame)
             
             for j in range(row_size):
                 index=(i*row_size)+j
@@ -195,6 +216,7 @@ class NoteListElement(tk.Frame):
 
         self.body_frame.bind("<Button-1>", self.on_click)
         self.note_body.bind("<Button-1>", self.on_click)
+
 
     def on_click(self, _):
         #this
